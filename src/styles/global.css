@@ -1,0 +1,556 @@
+:root {
+  color-scheme: light;
+  font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', Meiryo, sans-serif;
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --ink: #1a1d21;
+  --ink-sub: #5a6472;
+  --line: #dde2e9;
+  --primary: #3b6fe0;
+  --primary-ink: #ffffff;
+  --good: #2e8b46;
+  --warn: #c07a1a;
+  --bad: #c43e3e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.7;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* ---------- 汎用ボタン ---------- */
+.btn {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn:hover:not(:disabled) {
+  background: #eef1f6;
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-ink);
+  font-weight: 700;
+}
+.btn-primary:hover:not(:disabled) {
+  background: #2f5cc0;
+}
+.btn-ghost {
+  border: none;
+  background: transparent;
+  color: var(--ink-sub);
+}
+.btn-wide {
+  width: 100%;
+}
+.btn-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+/* ---------- モード選択 ---------- */
+.mode-select {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 40px 20px 80px;
+}
+.title-heading {
+  font-size: 34px;
+  margin: 0 0 8px;
+}
+.title-lead {
+  color: var(--ink-sub);
+  margin: 0 0 28px;
+}
+.select-section {
+  margin-bottom: 28px;
+}
+.select-section h2 {
+  font-size: 17px;
+  margin: 0 0 10px;
+}
+.mode-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+.mode-card {
+  text-align: left;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 14px 16px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mode-card.selected {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgb(59 111 224 / 15%);
+}
+.mode-card-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+.mode-card-desc {
+  font-size: 13px;
+  color: var(--ink-sub);
+}
+.skill-options {
+  display: grid;
+  gap: 8px;
+}
+.skill-option {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 10px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  padding: 10px 14px;
+  cursor: pointer;
+}
+.skill-option.selected {
+  border-color: var(--primary);
+}
+.skill-name {
+  font-weight: 700;
+}
+.skill-desc {
+  font-size: 13px;
+  color: var(--ink-sub);
+}
+.seed-note {
+  font-size: 13px;
+  color: var(--ink-sub);
+  margin: 0 0 8px;
+}
+.seed-input {
+  font-size: 15px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  width: 180px;
+}
+.btn-start {
+  font-size: 17px;
+  padding: 12px 32px;
+}
+
+/* ---------- ゲーム画面レイアウト ---------- */
+.game-screen {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 12px 16px 60px;
+}
+.game-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.game-title {
+  font-size: 20px;
+  margin: 0;
+  flex: 1;
+}
+.seed-label {
+  font-size: 12px;
+  color: var(--ink-sub);
+}
+.game-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.board-col {
+  flex: 0 0 auto;
+  width: 300px;
+}
+.board-wrap {
+  position: relative;
+  touch-action: manipulation;
+}
+.board-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  user-select: none;
+}
+.side-col {
+  flex: 0 0 auto;
+  width: 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.eval-col {
+  flex: 1 1 320px;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.control-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  justify-content: center;
+}
+.key-help {
+  font-size: 12px;
+  color: var(--ink-sub);
+  text-align: center;
+  margin: 6px 0 0;
+}
+
+/* ---------- 盤面上のオーバーレイ ---------- */
+.gameover-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgb(10 12 18 / 78%);
+  color: #fff;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  padding: 16px;
+}
+.gameover-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+}
+.chain-banner {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 30px;
+  font-weight: 800;
+  color: #ffd75e;
+  text-shadow: 0 2px 8px rgb(0 0 0 / 60%);
+  pointer-events: none;
+  animation: pop-in 0.25s ease-out;
+}
+@keyframes pop-in {
+  from {
+    transform: translate(-50%, -50%) scale(0.6);
+    opacity: 0;
+  }
+}
+.puyo-flash {
+  animation: flash 0.3s steps(2) infinite;
+}
+@keyframes flash {
+  50% {
+    opacity: 0.25;
+  }
+}
+.puyo-highlight {
+  filter: drop-shadow(0 0 6px #ffffff);
+}
+
+/* ---------- サイドパネル ---------- */
+.next-preview {
+  display: flex;
+  gap: 18px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.next-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.next-label {
+  font-size: 11px;
+  color: var(--ink-sub);
+}
+.stats-box {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.stats-box dl {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stats-box dl > div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+.stats-box dt {
+  color: var(--ink-sub);
+}
+.stats-box dd {
+  margin: 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.side-heading {
+  font-size: 14px;
+  margin: 0 0 6px;
+}
+.template-progress {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.progress-track {
+  height: 10px;
+  border-radius: 5px;
+  background: #e6eaf1;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--good);
+  transition: width 0.3s;
+}
+.progress-note {
+  font-size: 12px;
+  margin: 6px 0 0;
+}
+.progress-violation {
+  color: var(--bad);
+}
+.progress-variant {
+  font-size: 12px;
+  color: var(--ink-sub);
+  margin: 2px 0 0;
+}
+.progress-verdict {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 6px 0 0;
+}
+.verdict-good {
+  color: var(--good);
+}
+.verdict-bad {
+  color: var(--bad);
+}
+.verdict-neutral {
+  color: var(--ink-sub);
+}
+.guide-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  margin-top: 8px;
+  cursor: pointer;
+}
+.history-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.settings-box {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+.settings-box summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0 4px;
+}
+.settings-body fieldset {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.settings-body label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ---------- 評価パネル ---------- */
+.eval-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.eval-heading {
+  font-size: 16px;
+  margin: 0 0 10px;
+}
+.eval-stale {
+  font-size: 12px;
+  color: var(--ink-sub);
+  font-weight: 400;
+  margin-left: 6px;
+}
+.eval-subheading {
+  font-size: 14px;
+  margin: 14px 0 6px;
+}
+.grade-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 10px;
+  padding: 6px 14px;
+  font-weight: 700;
+}
+.grade-letter {
+  font-size: 26px;
+}
+.grade-label {
+  font-size: 13px;
+}
+.grade-S {
+  background: #e7f5ec;
+  color: var(--good);
+}
+.grade-A {
+  background: #e9f0fc;
+  color: var(--primary);
+}
+.grade-B {
+  background: #fcf3e3;
+  color: var(--warn);
+}
+.grade-C {
+  background: #fbeaea;
+  color: var(--bad);
+}
+.eval-note {
+  font-size: 13px;
+  background: #f4f0e4;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.candidate-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  background: #fbfcfe;
+}
+.candidate-card summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 12px;
+}
+.candidate-card summary::-webkit-details-marker {
+  display: none;
+}
+.candidate-summary {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.candidate-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+.candidate-title {
+  font-weight: 700;
+}
+.candidate-reason {
+  color: var(--ink-sub);
+}
+.candidate-chains {
+  color: var(--warn);
+  font-weight: 700;
+}
+.mini-board {
+  flex: 0 0 auto;
+  border-radius: 4px;
+}
+.explain-list {
+  margin: 0;
+  padding: 0 14px 12px 14px;
+  list-style: none;
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.explain-merit {
+  color: var(--good);
+}
+.explain-demerit {
+  color: var(--bad);
+}
+.eval-footnote {
+  font-size: 12px;
+  color: var(--ink-sub);
+  margin: 10px 0 0;
+}
+.eval-placeholder p {
+  font-size: 14px;
+  color: var(--ink-sub);
+}
+.hint-panel {
+  border-color: #cfd9f0;
+}
+
+/* ---------- レスポンシブ ---------- */
+@media (max-width: 900px) {
+  .game-layout {
+    justify-content: center;
+  }
+  .eval-col {
+    flex-basis: 100%;
+  }
+}
+@media (max-width: 560px) {
+  .board-col {
+    width: min(88vw, 300px);
+  }
+  .side-col {
+    width: min(88vw, 300px);
+  }
+}
