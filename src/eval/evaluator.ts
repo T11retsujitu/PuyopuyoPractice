@@ -104,7 +104,7 @@ function evaluatePlacement(
     };
   }
 
-  const features = extractFeatures(field, outcome, chainResult, templateCtx);
+  const features = extractFeatures(outcome, chainResult, templateCtx);
   const score = scoreFeatures(features, WEIGHT_PROFILES[ctx.skill], heights(field)[2] ?? 0);
   return {
     placement,

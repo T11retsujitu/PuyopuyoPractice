@@ -1,4 +1,4 @@
-import type { Color, Field } from '../core/types';
+import type { Field } from '../core/types';
 import { COLS, VISIBLE_ROWS } from '../core/types';
 import { heights, isDead } from '../core/field';
 import type { ChainResult } from '../core/chain';
@@ -95,7 +95,6 @@ function groupAt(f: Field, col: number, row: number): Set<string> | null {
 }
 
 export function extractFeatures(
-  before: Field,
   outcome: PlaceOutcome,
   chainResult: ChainResult,
   templateCtx?: TemplateContext,
