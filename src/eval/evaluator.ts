@@ -9,7 +9,7 @@ import {
 import { extractFeatures, type MoveFeatures, type TemplateContext } from './features';
 import { WEIGHT_PROFILES, type SkillLevel, type WeightProfile } from './profiles';
 import type { FoundationTemplate, MatchResult } from './templates/types';
-import { fitsCurrentPair, matchTemplate } from './templates/matcher';
+import { fitsCurrentPair, matchDelta } from './templates/matcher';
 
 export interface EvalContext {
   skill: SkillLevel;
@@ -87,7 +87,7 @@ function evaluatePlacement(
   pair: Pair,
   placement: Placement,
   ctx: EvalContext,
-  shared: { templateBefore?: MatchResult; pairFits?: boolean },
+  shared: { pairFits?: boolean },
 ): Candidate | null {
   const outcome = applyPlacement(field, pair, placement);
   if (!outcome) return null;
@@ -95,11 +95,13 @@ function evaluatePlacement(
 
   let templateCtx: TemplateContext | undefined;
   let templateMatch: MatchResult | undefined;
-  if (ctx.template && shared.templateBefore) {
-    templateMatch = matchTemplate(chainResult.field, ctx.template);
+  if (ctx.template) {
+    // 前後は同一バリアントで比較する(matchDelta のコメント参照)。
+    const delta = matchDelta(field, chainResult.field, ctx.template);
+    templateMatch = delta.after;
     templateCtx = {
-      before: shared.templateBefore,
-      after: templateMatch,
+      before: delta.before,
+      after: delta.after,
       pairFits: shared.pairFits ?? true,
     };
   }
@@ -118,9 +120,8 @@ function evaluatePlacement(
 
 /** 全設置候補を評価し、同一盤面になる候補を統合してスコア降順で返す。 */
 export function evaluateAllPlacements(field: Field, pair: Pair, ctx: EvalContext): Candidate[] {
-  const shared: { templateBefore?: MatchResult; pairFits?: boolean } = {};
+  const shared: { pairFits?: boolean } = {};
   if (ctx.template) {
-    shared.templateBefore = matchTemplate(field, ctx.template);
     shared.pairFits = fitsCurrentPair(field, ctx.template, pair);
   }
   const seen = new Map<string, Candidate>();
@@ -158,9 +159,8 @@ export function evaluateMove(
   playerPlacement: Placement,
   ctx: EvalContext,
 ): MoveEvaluation | null {
-  const shared: { templateBefore?: MatchResult; pairFits?: boolean } = {};
+  const shared: { pairFits?: boolean } = {};
   if (ctx.template) {
-    shared.templateBefore = matchTemplate(field, ctx.template);
     shared.pairFits = fitsCurrentPair(field, ctx.template, pair);
   }
   const player = evaluatePlacement(field, pair, playerPlacement, ctx, shared);

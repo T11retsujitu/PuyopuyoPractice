@@ -104,17 +104,32 @@ export function matchTemplate(f: Field, template: FoundationTemplate): MatchResu
 }
 
 /**
+ * 一手の前後のテンプレ照合。
+ * 「後」の盤面に最も合うバリアントを選び、「前」の盤面も同じバリアントで照合する。
+ * バリアント(左右の型など)が前後で入れ替わると差分に幽霊違反が出るため、
+ * 差分は必ず同一バリアント同士で取る。
+ */
+export function matchDelta(
+  before: Field,
+  after: Field,
+  template: FoundationTemplate,
+): { before: MatchResult; after: MatchResult } {
+  const afterMatch = matchTemplate(after, template);
+  const variant = template.variants.find((v) => v.name === afterMatch.variantName)!;
+  return { before: matchVariant(before, variant), after: afterMatch };
+}
+
+/**
  * 今のツモで土台を進められるか。
  * 「一致数が増え、かつ違反が増えない」設置が1つでもあれば true。
  * false の場合、評価エンジンは「逃がし」を肯定的に扱う。
  */
 export function fitsCurrentPair(f: Field, template: FoundationTemplate, pair: Pair): boolean {
-  const before = matchTemplate(f, template);
   for (const p of enumeratePlacements(f, pair)) {
     const out = applyPlacement(f, pair, p);
     if (!out) continue;
     const settled = resolveChains(out.field).field;
-    const after = matchTemplate(settled, template);
+    const { before, after } = matchDelta(f, settled, template);
     if (
       after.matchedCount > before.matchedCount &&
       after.violationCells.length <= before.violationCells.length

@@ -3,7 +3,7 @@ import type { Cell, Color, Field } from '../../core/types';
 import { DEFAULT_COLORS, TOTAL_ROWS, COLS } from '../../core/types';
 import { fieldFromRows } from '../../core/field';
 import { FOUNDATION_TEMPLATES, STAIRS, KAGI, GTR } from './index';
-import { fitsCurrentPair, matchTemplate, matchVariant } from './matcher';
+import { fitsCurrentPair, matchDelta, matchTemplate, matchVariant } from './matcher';
 import type { TemplateVariant } from './types';
 
 /** バリアントから貪欲彩色で完成形の盤面を作るテストヘルパ。 */
@@ -88,6 +88,20 @@ describe('matchTemplate', () => {
 
   it('KAGI has 4 variants (2-1-1 / 1-1-2 × 左右)', () => {
     expect(KAGI.variants).toHaveLength(4);
+  });
+});
+
+describe('matchDelta (同一バリアント比較)', () => {
+  it('does not report phantom violations when the best variant flips', () => {
+    // 1列目に G,B(左GTRの b セルに G✓ + 違反1)がある状態から、
+    // 左GTRを進める手を打つ。前後とも「後」の最良バリアントで比較するので、
+    // 元からあった違反は差分に現れない。
+    const before = fieldFromRows(['B.....', 'G.....']);
+    const after = fieldFromRows(['B.....', 'GG....']);
+    const { before: b, after: a } = matchDelta(before, after, GTR);
+    expect(a.variantName).toBe(b.variantName);
+    expect(a.violationCells.length - b.violationCells.length).toBeLessThanOrEqual(0);
+    expect(a.matchedCount).toBeGreaterThan(b.matchedCount);
   });
 });
 

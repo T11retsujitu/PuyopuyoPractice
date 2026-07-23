@@ -84,6 +84,14 @@ export function explainCandidate(c: Candidate, ctx: ExplainContext): Explanation
     if (f.template.escape) {
       merit('escapeOk');
     }
+    // escape でも合致でも崩しでもない = 進められるツモなのに進めなかった。
+    if (
+      !f.template.escape &&
+      f.template.matchedDelta <= 0 &&
+      f.template.violationDelta <= 0
+    ) {
+      demerit('missedTemplate');
+    }
   }
 
   // --- 消した手 ---
