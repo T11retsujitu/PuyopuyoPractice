@@ -5,7 +5,7 @@ import type { MoveFeatures } from '../features';
 import { buildExplainContext, candidateReason, explainCandidate, type ExplainContext } from './explain';
 
 /** テキスト選択ロジックの単体テスト用に Candidate を組み立てる。 */
-function fakeCandidate(features: Partial<MoveFeatures>): Candidate {
+function fakeCandidate(features: Partial<MoveFeatures>, afterField = createField()): Candidate {
   const base: MoveFeatures = {
     chigiriHeightDiff: 0,
     bumpiness: 0,
@@ -26,11 +26,12 @@ function fakeCandidate(features: Partial<MoveFeatures>): Candidate {
     triggerNeeds2: false,
     triggerBlocked: false,
     bestIgnition: null,
+    h3After: 0,
   };
   return {
     placement: { col: 2, rot: 0 },
-    outcome: { field: createField(), landed: [], chigiriHeightDiff: 0, vanished: [] },
-    chainResult: { field: createField(), steps: [], chains: 0, totalScore: 0, allClear: false },
+    outcome: { field: afterField, landed: [], chigiriHeightDiff: 0, vanished: [] },
+    chainResult: { field: afterField, steps: [], chains: 0, totalScore: 0, allClear: false },
     features: { ...base, ...features },
     score: 0,
   };
@@ -41,6 +42,7 @@ const ctx = (over: Partial<ExplainContext> = {}): ExplainContext => ({
   maxChainBefore: 0,
   bumpinessBefore: 0,
   h3Before: 0,
+  valleysBefore: 0,
   ...over,
 });
 
@@ -78,6 +80,40 @@ describe('explainCandidate text selection', () => {
     expect(fit!.text).toContain('GTR');
   });
 
+  it('keepTrigger mentions 縦に2個 when the ignition needs two puyos', () => {
+    const c = fakeCandidate({
+      maxChain: 2,
+      bestIgnition: { color: 'R', col: 0, puyosNeeded: 2, chains: 2, score: 0 },
+    });
+    const ex = explainCandidate(c, ctx());
+    const kt = ex.find((e) => e.id === 'keepTrigger');
+    expect(kt).toBeDefined();
+    expect(kt!.text).toContain('縦に2個');
+  });
+
+  it('dangerClear does not fire when 3列目 did not get lower', () => {
+    const c = fakeCandidate({ immediateChains: 2, h3After: 10 });
+    const ex = explainCandidate(c, ctx({ h3Before: 10 }));
+    expect(ex.some((e) => e.id === 'dangerClear')).toBe(false);
+  });
+
+  it('valley demerit only fires for newly created valleys', () => {
+    // 2列目が深い谷になっている盤面。
+    const valleyField = fieldFromRows(['R.B...', 'R.B...', 'R.B...']);
+    // 谷の数が before と同じなら指摘しない(盤面自体は谷を含んでいても)。
+    const unchanged = explainCandidate(
+      fakeCandidate({ deepValleys: 1 }, valleyField),
+      ctx({ valleysBefore: 1 }),
+    );
+    expect(unchanged.some((e) => e.id === 'valley')).toBe(false);
+    // この手で新たに谷ができたなら指摘する。
+    const created = explainCandidate(
+      fakeCandidate({ deepValleys: 1 }, valleyField),
+      ctx({ valleysBefore: 0 }),
+    );
+    expect(created.some((e) => e.id === 'valley')).toBe(true);
+  });
+
   it('dead short-circuits everything else', () => {
     const c = fakeCandidate({ dead: true, newConn3: 2 });
     const ex = explainCandidate(c, ctx());
@@ -100,7 +136,7 @@ describe('explainCandidate text selection', () => {
       for (const skill of ['beginner', 'intermediate', 'advanced'] as const) {
         const texts = explainCandidate(fakeCandidate(v), ctx({ skill, maxChainBefore: 2 }));
         for (const e of texts) {
-          expect(e.text).not.toMatch(/正解|不正解|ミス/);
+          expect(e.text).not.toMatch(/正解|不正解|ミス|正しい/);
         }
       }
     }

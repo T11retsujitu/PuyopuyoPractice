@@ -23,7 +23,7 @@ export function renderText(entry: TextEntry, skill: SkillLevel, params: Record<s
 export const MERIT_TEXTS = {
   noChigiri: {
     beginner:
-      'ちぎりのない置き方です。実戦ではちぎると落下待ちの時間が発生するので、ちぎらず置けると手数で有利になります。',
+      'ちぎりのない置き方です。実戦ではちぎると落下待ちの時間が発生するので、ちぎらず置けると時間(テンポ)で有利になります。',
     intermediate: 'ちぎりなしで置けています。テンポを落とさない良い選択です。',
     advanced: 'ちぎりなし。手なりで形を進められています。',
   },
@@ -44,15 +44,20 @@ export const MERIT_TEXTS = {
   },
   chainExtend: {
     beginner: (p) =>
-      `この一手で、想定できる連鎖が${p.before}連鎖から${p.after}連鎖に伸びました。少しずつ連鎖を大きく育てられています。`,
-    intermediate: (p) => `想定連鎖が${p.before}連鎖 → ${p.after}連鎖に伸びました。`,
+      p.before === 0
+        ? `この一手で、新たに${p.after}連鎖が見込める形になりました。連鎖のタネが育ち始めています。`
+        : `この一手で、想定できる連鎖が${p.before}連鎖から${p.after}連鎖に伸びました。少しずつ連鎖を大きく育てられています。`,
+    intermediate: (p) =>
+      p.before === 0
+        ? `新たに${p.after}連鎖が見込める形になりました。`
+        : `想定連鎖が${p.before}連鎖 → ${p.after}連鎖に伸びました。`,
     advanced: (p) => `本線が${p.after}連鎖に成長。`,
   },
   keepTrigger: {
     beginner: (p) =>
-      `${p.col}列目に${p.color}ぷよを置けば${p.chains}連鎖を打てる状態です。この「発火点」(連鎖の起点)が空いたままなのが良い形です。`,
-    intermediate: (p) => `${p.col}列目の発火点が生きています(${p.color}発火で${p.chains}連鎖)。`,
-    advanced: (p) => `発火点(${p.col}列目・${p.color})を温存。${p.chains}連鎖を即発火できます。`,
+      `${p.col}列目に${p.color}${p.putPhrase}${p.chains}連鎖を打てる状態です。この「発火点」(連鎖の起点)が使えるままなのが良い形です。`,
+    intermediate: (p) => `${p.col}列目の発火点が生きています(${p.color}${p.putPhrase}${p.chains}連鎖)。`,
+    advanced: (p) => `発火点(${p.col}列目・${p.color})を温存。${p.chains}連鎖を発火できます。`,
   },
   templateFit: {
     beginner: (p) => `この置き方は${p.form}の形どおりです(+${p.n}マス)。お手本に沿って積めています。`,
@@ -62,7 +67,7 @@ export const MERIT_TEXTS = {
   escapeOk: {
     beginner:
       '今のツモは土台に使いにくい色です。形を崩して無理に使うより、脇へ逃がしておくのが良い判断です。逃がしたぷよも後で連鎖の一部にできることがあります。',
-    intermediate: '土台に合わないツモを逃がしました。形を崩すより被害が小さい、正しい対応です。',
+    intermediate: '土台に合わないツモを逃がしました。形を崩すより被害を小さく抑えられます。',
     advanced: '合わないツモの逃がし。妥当な処理です。',
   },
   dangerClear: {
@@ -103,9 +108,9 @@ export const DEMERIT_TEXTS = {
   },
   triggerBlock: {
     beginner:
-      '連鎖の発火点(連鎖を始める場所)の上が塞がっています。いざ消したいときにすぐ発火できず、余計な手数がかかります。',
-    intermediate: '発火点が塞がっています。発火までに掘りの手数が必要です。',
-    advanced: '発火点の埋没。副砲がない盤面では致命的になり得ます。',
+      '連鎖の発火点(連鎖を始める場所)まで、今はぷよを運べません。途中の列が12段目まで積み上がっているため、発火の前に周りを整理する手数がかかります。',
+    intermediate: '発火点への経路が塞がっています。発火するには先に整地が必要です。',
+    advanced: '発火ルートの封鎖。副砲がない盤面では致命的になり得ます。',
   },
   thirdHigh: {
     beginner: (p) =>
@@ -133,9 +138,14 @@ export const DEMERIT_TEXTS = {
   },
   chainShrink: {
     beginner: (p) =>
-      `想定できる連鎖が${p.before}連鎖から${p.after}連鎖に減りました。連鎖のタネの上に別の色を乗せてしまったかもしれません。`,
-    intermediate: (p) => `想定連鎖が${p.before} → ${p.after}連鎖に減少しました。`,
-    advanced: (p) => `本線が${p.after}連鎖に縮小。`,
+      p.after === 0
+        ? `これまで見込めていた${p.before}連鎖の形が崩れました。連鎖のタネの上に別の色を乗せてしまったかもしれません。`
+        : `想定できる連鎖が${p.before}連鎖から${p.after}連鎖に減りました。連鎖のタネの上に別の色を乗せてしまったかもしれません。`,
+    intermediate: (p) =>
+      p.after === 0
+        ? `見込めていた${p.before}連鎖の形が崩れました。`
+        : `想定連鎖が${p.before} → ${p.after}連鎖に減少しました。`,
+    advanced: (p) => (p.after === 0 ? `本線が消失。` : `本線が${p.after}連鎖に縮小。`),
   },
   vanished: {
     beginner: 'ぷよが13段目からあふれて消滅しました。高く積みすぎです。',

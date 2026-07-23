@@ -3,6 +3,7 @@ import { COLOR_NAMES_JA, COLS } from '../../core/types';
 import { heights } from '../../core/field';
 import { bestIgnition, probeIgnitions } from '../../core/probe';
 import type { Candidate } from '../evaluator';
+import { countValleys } from '../features';
 import type { SkillLevel } from '../profiles';
 import { DEMERIT_TEXTS, MERIT_TEXTS, renderText, type DemeritId, type MeritId } from './texts';
 
@@ -18,6 +19,8 @@ export interface ExplainContext {
   maxChainBefore: number;
   bumpinessBefore: number;
   h3Before: number;
+  /** 設置前の谷の数(この手が新たに作った谷だけを指摘するため)。 */
+  valleysBefore: number;
   /** 土台モードのときのフォーム名(例: 'GTR')。 */
   formName?: string;
 }
@@ -28,11 +31,13 @@ export function buildExplainContext(
   formName?: string,
 ): ExplainContext {
   const h = heights(beforeField);
+  const valleys = countValleys(h);
   return {
     skill,
     maxChainBefore: bestIgnition(probeIgnitions(beforeField))?.chains ?? 0,
     bumpinessBefore: h.slice(0, -1).reduce((sum, v, i) => sum + Math.abs((h[i + 1] ?? 0) - v), 0),
     h3Before: h[2] ?? 0,
+    valleysBefore: valleys.deep + valleys.edge,
     ...(formName ? { formName } : {}),
   };
 }
@@ -96,16 +101,22 @@ export function explainCandidate(c: Candidate, ctx: ExplainContext): Explanation
 
   // --- 消した手 ---
   if (f.immediateChains > 0) {
-    if (inDanger) {
+    if (inDanger && f.h3After < ctx.h3Before) {
+      // 「高さを下げた」と褒めるのは、実際に3列目が下がったときだけ。
       merit('dangerClear');
-    } else if (f.immediateChains <= 2 && ctx.maxChainBefore > f.immediateChains) {
+    } else if (!inDanger && f.immediateChains <= 2 && ctx.maxChainBefore > f.immediateChains) {
       demerit('smallPop', { chains: f.immediateChains, potential: ctx.maxChainBefore });
     } else if (f.immediateChains >= 3) {
       merit('bigPop', { chains: f.immediateChains });
     }
     if (f.allClear) merit('allClear');
     if (f.overGroupCells > 0) {
-      demerit('overGroup', { size: 4 + f.overGroupCells });
+      // 複数グループの同時消しでは「最大の連結数」を提示する(合算だと存在しない個数になる)。
+      const maxGroupSize = Math.max(
+        0,
+        ...(c.chainResult.steps[0]?.groups ?? []).map((g) => g.cells.length),
+      );
+      demerit('overGroup', { size: maxGroupSize });
     }
   }
 
@@ -124,6 +135,8 @@ export function explainCandidate(c: Candidate, ctx: ExplainContext): Explanation
       col: f.bestIgnition.col + 1,
       color: COLOR_NAMES_JA[f.bestIgnition.color],
       chains: f.maxChain,
+      // 1個で発火できるのか縦2個必要なのかを文言に反映する。
+      putPhrase: f.bestIgnition.puyosNeeded === 1 ? 'ぷよを置けば' : 'ぷよを縦に2個置けば',
     });
   }
   if (f.triggerBlocked) {
@@ -140,13 +153,13 @@ export function explainCandidate(c: Candidate, ctx: ExplainContext): Explanation
   } else if (skill === 'beginner' && f.immediateChains === 0) {
     merit('noChigiri');
   }
+  // 谷は「この手で新しくできた」ときだけ指摘する(既存の谷を毎手蒸し返さない)。
   const vCol = valleyCol(c.chainResult.field);
-  if ((f.deepValleys > 0 || f.edgeValleys > 0) && vCol !== null) {
+  if (f.deepValleys + f.edgeValleys > ctx.valleysBefore && vCol !== null) {
     demerit('valley', { col: vCol });
   }
   if (f.buriedIsolated > 0) demerit('buried');
-  const h3After = heights(c.chainResult.field)[2] ?? 0;
-  if (h3After >= 9) demerit('thirdHigh', { h: h3After });
+  if (f.h3After >= 9) demerit('thirdHigh', { h: f.h3After });
   if (f.vanishedCount > 0) demerit('vanished');
   if (
     f.bumpiness <= ctx.bumpinessBefore - 2 &&

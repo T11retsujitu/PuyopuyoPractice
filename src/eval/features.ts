@@ -1,4 +1,4 @@
-import type { Field } from '../core/types';
+import type { CellPos, Field } from '../core/types';
 import { COLS, VISIBLE_ROWS } from '../core/types';
 import { heights, isDead } from '../core/field';
 import type { ChainResult } from '../core/chain';
@@ -21,6 +21,8 @@ export interface MoveFeatures {
   deadRisk: number;
   /** この手で敗北する(3列目12段目が埋まる)。 */
   dead: boolean;
+  /** 連鎖解決後の3列目の高さ。 */
+  h3After: number;
   /** 置いたぷよが同色2連結になった数。 */
   newConn2: number;
   /** 置いたぷよが同色3連結になった数。 */
@@ -59,9 +61,11 @@ export interface TemplateContext {
   after: MatchResult;
   /** このツモで土台を進められる設置が存在するか。 */
   pairFits: boolean;
+  /** 照合バリアントの発火点セル(逃がし判定で「ここに捨てた」を弾く)。 */
+  triggerCells: readonly CellPos[];
 }
 
-function countValleys(h: number[]): { deep: number; edge: number } {
+export function countValleys(h: number[]): { deep: number; edge: number } {
   let deep = 0;
   let edge = 0;
   for (let c = 1; c < COLS - 1; c++) {
@@ -133,11 +137,18 @@ export function extractFeatures(
   const maxChain = best?.chains ?? 0;
   const flexIgnitions = ignitions.filter((ig) => ig.chains === maxChain);
   const reachableBest = flexIgnitions.filter((ig) => isReachable(hAfter, ig.col));
+  // 解説に出す発火点は到達可能なものを優先する(到達不能な列を案内しない)。
+  const displayIgnition = reachableBest.length > 0 ? bestIgnition(reachableBest) : best;
 
   let template: MoveFeatures['template'];
   if (templateCtx) {
+    // 発火点の上に捨てるのは「逃がし」として認めない。
+    const landedOnTrigger = templateCtx.triggerCells.some((t) =>
+      outcome.landed.some((l) => l.col === t.col && l.row === t.row),
+    );
     const escape =
       !templateCtx.pairFits &&
+      !landedOnTrigger &&
       templateCtx.after.violationCells.length <= templateCtx.before.violationCells.length;
     template = {
       matchedDelta: templateCtx.after.matchedCount - templateCtx.before.matchedCount,
@@ -162,11 +173,12 @@ export function extractFeatures(
     immediateScore: chainResult.totalScore,
     allClear: chainResult.allClear,
     vanishedCount: outcome.vanished.length,
+    h3After: h3,
     maxChain,
     ignitionFlex: Math.min(3, flexIgnitions.length),
-    triggerNeeds2: best?.puyosNeeded === 2,
+    triggerNeeds2: displayIgnition?.puyosNeeded === 2,
     triggerBlocked: maxChain > 0 && reachableBest.length === 0,
-    bestIgnition: best,
+    bestIgnition: displayIgnition,
     ...(template ? { template } : {}),
   };
 }

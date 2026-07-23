@@ -97,7 +97,7 @@ export function ModeSelect({ settings, onChangeSettings, onStart }: Props) {
       <section className="select-section">
         <h2>ツモのシード(任意)</h2>
         <p className="seed-note">
-          同じシードなら同じツモ順になります。空欄ならランダム。気に入った譜面を練習し直すときに使えます。
+          同じシードなら同じツモ順になります。空欄ならランダム。同じ配ぷよを繰り返し練習したいときに使えます。
         </p>
         <input
           className="seed-input"

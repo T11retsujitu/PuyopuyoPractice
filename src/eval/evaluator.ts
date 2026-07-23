@@ -65,7 +65,8 @@ export function scoreFeatures(f: MoveFeatures, w: WeightProfile, hBefore3: numbe
   s += w.vanishedPer * f.vanishedCount;
   const inDanger = hBefore3 >= 10;
   if (f.immediateChains > 0) {
-    if (inDanger) {
+    if (inDanger && f.h3After < hBefore3) {
+      // 危険時の消しは、実際に3列目の高さが下がったときだけ加点する。
       s += w.popInDanger;
     } else if (f.immediateChains <= 2) {
       s += w.smallPopSafe * f.immediateChains;
@@ -99,10 +100,12 @@ function evaluatePlacement(
     // 前後は同一バリアントで比較する(matchDelta のコメント参照)。
     const delta = matchDelta(field, chainResult.field, ctx.template);
     templateMatch = delta.after;
+    const variant = ctx.template.variants.find((v) => v.name === delta.after.variantName);
     templateCtx = {
       before: delta.before,
       after: delta.after,
       pairFits: shared.pairFits ?? true,
+      triggerCells: variant?.triggerCells ?? [],
     };
   }
 

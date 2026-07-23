@@ -3,12 +3,7 @@ import type { CellPos } from '../core/types';
 import { createTsumoDeck, DECK_PAIRS } from '../core/tsumo';
 import { FOUNDATION_TEMPLATES, matchTemplate } from '../eval/templates';
 import { SKILL_LEVELS } from '../eval/profiles';
-import {
-  createInitialState,
-  evalContextOf,
-  gameReducer,
-  type GameConfig,
-} from '../state/gameReducer';
+import { createInitialState, gameReducer, type GameConfig } from '../state/gameReducer';
 import { buildHints } from '../state/review';
 import type { Settings } from '../state/settings';
 import { BoardView, type BoardOverlayCell } from './BoardView';
@@ -36,9 +31,11 @@ export function GameScreen({ config, settings, onChangeSettings, onExit }: Props
   );
   const [showGuide, setShowGuide] = useState(false);
   const boardWrapRef = useRef<HTMLDivElement>(null);
+  const wheelAccum = useRef(0);
 
   const deck = useMemo(() => createTsumoDeck(config.seed), [config.seed]);
-  const pair = deck.pairAt(state.tsumoIndex);
+  // pairAt は毎回新しいオブジェクトを返すので、参照を安定させて下流のメモを効かせる。
+  const pair = useMemo(() => deck.pairAt(state.tsumoIndex), [deck, state.tsumoIndex]);
   const animate = settings.animationSpeed !== 'off';
 
   // 練度設定の変更を反映する。
@@ -46,13 +43,14 @@ export function GameScreen({ config, settings, onChangeSettings, onExit }: Props
     if (state.skill !== settings.skill) dispatch({ type: 'SET_SKILL', skill: settings.skill });
   }, [settings.skill, state.skill]);
 
-  // 連鎖アニメーションの進行。
+  // 連鎖アニメーションの進行。途中で「なし」に切り替えたら即座に最終盤面へ。
   useEffect(() => {
     if (state.phase !== 'resolving') return;
-    const t = setTimeout(
-      () => dispatch({ type: 'CHAIN_TICK' }),
-      TICK_MS[settings.animationSpeed === 'fast' ? 'fast' : 'normal'],
-    );
+    if (settings.animationSpeed === 'off') {
+      dispatch({ type: 'SKIP_ANIMATION' });
+      return;
+    }
+    const t = setTimeout(() => dispatch({ type: 'CHAIN_TICK' }), TICK_MS[settings.animationSpeed]);
     return () => clearTimeout(t);
   }, [state.phase, state.chainStepIndex, settings.animationSpeed]);
 
@@ -63,19 +61,21 @@ export function GameScreen({ config, settings, onChangeSettings, onExit }: Props
     [template, state.field],
   );
 
+  // カーソル移動では再計算しないよう、実際に使う値だけに依存させる。
   const hints = useMemo(() => {
     if (state.phase !== 'placing' || !settings.showHint) return null;
-    return buildHints(state.field, pair, evalContextOf(state), 3);
-  }, [state, pair, settings.showHint]);
+    return buildHints(state.field, pair, { skill: state.skill, ...(template ? { template } : {}) }, 3);
+  }, [state.phase, state.field, state.skill, template, pair, settings.showHint]);
 
+  // お手本は最終盤面基準なので、連鎖アニメの中間フレームには重ねない。
   const guideOverlay = useMemo<BoardOverlayCell[]>(() => {
-    if (!showGuide || !template || !match) return [];
+    if (!showGuide || !template || !match || state.phase === 'resolving') return [];
     const variant = template.variants.find((v) => v.name === match.variantName);
     if (!variant) return [];
     return variant.cells
       .filter((c) => !state.field[c.pos.col]?.[c.pos.row])
       .map((c) => ({ pos: c.pos, color: match.assignment.get(c.v)!, style: 'ghost' as const }));
-  }, [showGuide, template, match, state.field]);
+  }, [showGuide, template, match, state.field, state.phase]);
 
   // 表示する盤面: アニメ中はタイムラインの中間盤面。
   const displayField =
@@ -90,6 +90,11 @@ export function GameScreen({ config, settings, onChangeSettings, onExit }: Props
     state.phase === 'review' && state.review && state.review.player.candidate.chainResult.chains === 0
       ? state.review.player.candidate.outcome.landed
       : [];
+  // 連鎖アニメ中はスコア等の結果を先に見せない(直前スナップショットの値を表示)。
+  const statsSource =
+    state.phase === 'resolving' && state.history.length > 0
+      ? state.history[state.history.length - 1]!
+      : state;
 
   const toggleHint = useCallback(
     () => onChangeSettings({ ...settings, showHint: !settings.showHint }),
@@ -141,7 +146,14 @@ export function GameScreen({ config, settings, onChangeSettings, onExit }: Props
               }
             }}
             onWheel={(e) => {
-              if (state.phase === 'placing') dispatch({ type: 'ROTATE', dir: e.deltaY > 0 ? 1 : -1 });
+              // トラックパッドは1ジェスチャで多数のイベントを発火するため、
+              // 一定量たまるまで蓄積してから1回だけ回転させる。横スクロールは無視。
+              if (state.phase !== 'placing' || e.deltaY === 0) return;
+              wheelAccum.current += e.deltaY;
+              if (Math.abs(wheelAccum.current) >= 50) {
+                dispatch({ type: 'ROTATE', dir: wheelAccum.current > 0 ? 1 : -1 });
+                wheelAccum.current = 0;
+              }
             }}
           >
             <BoardView
@@ -195,10 +207,10 @@ export function GameScreen({ config, settings, onChangeSettings, onExit }: Props
           <NextPreview next={deck.pairAt(state.tsumoIndex + 1)} nextNext={deck.pairAt(state.tsumoIndex + 2)} />
           <div className="stats-box">
             <dl>
-              <div><dt>スコア</dt><dd>{state.totalScore.toLocaleString()}</dd></div>
-              <div><dt>手数</dt><dd>{state.moveCount}</dd></div>
-              <div><dt>最大連鎖</dt><dd>{state.maxChainSeen}</dd></div>
-              <div><dt>全消し</dt><dd>{state.allClearCount}</dd></div>
+              <div><dt>スコア</dt><dd>{statsSource.totalScore.toLocaleString()}</dd></div>
+              <div><dt>手数</dt><dd>{statsSource.moveCount}</dd></div>
+              <div><dt>最大連鎖</dt><dd>{statsSource.maxChainSeen}</dd></div>
+              <div><dt>全消し</dt><dd>{statsSource.allClearCount}</dd></div>
               <div><dt>ツモ</dt><dd>{(state.tsumoIndex % DECK_PAIRS) + 1}/{DECK_PAIRS}</dd></div>
             </dl>
           </div>

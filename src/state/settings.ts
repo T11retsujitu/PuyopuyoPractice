@@ -22,7 +22,20 @@ export function loadSettings(): Settings {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = JSON.parse(raw) as Partial<Settings>;
-    return { ...DEFAULT_SETTINGS, ...parsed };
+    // 手編集や旧バージョンの値でクラッシュしないよう、既知の値だけ受け入れる。
+    return {
+      skill:
+        parsed.skill === 'beginner' || parsed.skill === 'intermediate' || parsed.skill === 'advanced'
+          ? parsed.skill
+          : DEFAULT_SETTINGS.skill,
+      showHint: typeof parsed.showHint === 'boolean' ? parsed.showHint : DEFAULT_SETTINGS.showHint,
+      animationSpeed:
+        parsed.animationSpeed === 'normal' ||
+        parsed.animationSpeed === 'fast' ||
+        parsed.animationSpeed === 'off'
+          ? parsed.animationSpeed
+          : DEFAULT_SETTINGS.animationSpeed,
+    };
   } catch {
     return DEFAULT_SETTINGS;
   }
